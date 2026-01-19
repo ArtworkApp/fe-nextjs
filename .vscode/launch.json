@@ -1,0 +1,30 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Next.js (Node 20 via nvm, clean install)",
+            "type": "node",
+            "request": "launch",
+            "runtimeExecutable": "/bin/zsh",
+            "runtimeArgs": [
+                "-l",
+                "-c",
+                "export NVM_DIR=\"$HOME/.nvm\" && source \"$NVM_DIR/nvm.sh\" && nvm use 20 && rm -rf node_modules package-lock.json .next && npm install && npm run dev"
+            ],
+            "console": "integratedTerminal",
+            "internalConsoleOptions": "neverOpen"
+        },
+        {
+            "name": "Next.js: dev (Node 20)",
+            "type": "node",
+            "request": "launch",
+            "runtimeExecutable": "/bin/zsh",
+            "runtimeArgs": [
+                "-l",
+                "-c",
+                "export NVM_DIR=\"$HOME/.nvm\" && source \"$NVM_DIR/nvm.sh\" && nvm use 20 && npm run dev"
+            ],
+            "console": "integratedTerminal"
+        }
+    ]
+}
