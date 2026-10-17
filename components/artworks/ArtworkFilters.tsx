@@ -4,6 +4,7 @@ import { useState, type FormEvent, type KeyboardEvent } from 'react';
 import { useLookup } from '../../hooks/useLookup';
 import { DEFAULT_SORT, hasActiveFilters, parseArtworkQuery, serializeArtworkQuery, validateYears, type ArtworkFilters as Filters } from '../../lib/artworks/query';
 import { COUNTRY_NAMES } from '../../util/countries';
+import { ArtistAutocomplete, type ArtistOption } from './ArtistAutocomplete';
 
 interface ArtworkType {
   id: string;
@@ -21,7 +22,9 @@ interface Props {
 
 const controlClass = 'mt-1 w-full rounded-lg border border-stone-300 bg-white px-3 py-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-900';
 
-function FilterForm({ filters, onApply, lookups }: Props & {
+function FilterForm({ filters, onApply, selectedArtist, onArtistSelect, lookups }: Props & {
+  selectedArtist: ArtistOption | null;
+  onArtistSelect: (artist: ArtistOption | null) => void;
   lookups: {
     types: ReturnType<typeof useLookup<ArtworkType>>;
     materials: ReturnType<typeof useLookup<Material>>;
@@ -83,6 +86,11 @@ function FilterForm({ filters, onApply, lookups }: Props & {
 
   return (
     <form onSubmit={submit} noValidate className="mt-4 space-y-5">
+      <ArtistAutocomplete selectedId={draft.artistId}
+        selectedArtist={selectedArtist?.id === draft.artistId ? selectedArtist : null} onSelect={(artist) => {
+        onArtistSelect(artist);
+        setDraft((previous) => ({ ...previous, artistId: artist?.id }));
+      }} />
       <div>
         <label htmlFor="artwork-type">Artwork type</label>
         <select id="artwork-type" className={controlClass} value={draft.artworkTypeId ?? ''}
@@ -154,6 +162,7 @@ function FilterForm({ filters, onApply, lookups }: Props & {
 export function ArtworkFilters({ filters, onApply }: Props) {
   const types = useLookup<ArtworkType>('artwork-types');
   const materials = useLookup<Material>('materials');
+  const [selectedArtist, setSelectedArtist] = useState<ArtistOption | null>(null);
   const key = serializeArtworkQuery({ filters, sort: DEFAULT_SORT }).toString();
   const selected = [
     filters.artistId && `Artist ID: ${filters.artistId}`,
@@ -169,8 +178,12 @@ export function ArtworkFilters({ filters, onApply }: Props) {
       <ul aria-label="Applied filters" className="flex flex-wrap gap-2">
         {selected.map((label, index) => <li key={`${index}-${label}`} className="rounded-full bg-stone-100 px-3 py-1 text-sm">{label}</li>)}
       </ul>
-      <button type="button" onClick={() => onApply({ materialIds: [] })} className="mt-3 underline">Clear Filters</button>
+      <button type="button" onClick={() => {
+        setSelectedArtist(null);
+        onApply({ materialIds: [] });
+      }} className="mt-3 underline">Clear Filters</button>
     </div>}
-    <FilterForm key={key} filters={filters} onApply={onApply} lookups={{ types, materials }} />
+    <FilterForm key={key} filters={filters} onApply={onApply} selectedArtist={selectedArtist}
+      onArtistSelect={setSelectedArtist} lookups={{ types, materials }} />
   </aside>;
 }

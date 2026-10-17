@@ -168,4 +168,27 @@ describe('artwork filters', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Apply filters' }));
     await waitFor(() => expect(latestParams().get('country')).toBe('Japan'));
   });
+
+  it('searches artists by name and applies the selected artist ID', async () => {
+    const original = vi.mocked(fetch).getMockImplementation()!;
+    vi.mocked(fetch).mockImplementation(async (input, options) => {
+      const url = new URL(String(input));
+      if (url.pathname.endsWith('/artists')) {
+        return { ok: true, json: async () => ({ data: [{ id: '42', name: 'Claude Monet', country: 'France' }] }) } as Response;
+      }
+      return original(input, options);
+    });
+    render(<Home />);
+    const artist = await screen.findByLabelText('Artist');
+    fireEvent.change(artist, { target: { value: 'monet' } });
+    expect(await screen.findByRole('option', { name: /Claude Monet/ })).toBeInTheDocument();
+    fireEvent.keyDown(artist, { key: 'ArrowDown' });
+    fireEvent.keyDown(artist, { key: 'Enter' });
+    expect(artist).toHaveValue('Claude Monet');
+    fireEvent.click(screen.getByRole('button', { name: 'Apply filters' }));
+    await waitFor(() => expect(latestParams().get('artistId')).toBe('42'));
+    fireEvent.click(screen.getByRole('button', { name: 'Clear artist' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Apply filters' }));
+    await waitFor(() => expect(latestParams().has('artistId')).toBe(false));
+  });
 });
