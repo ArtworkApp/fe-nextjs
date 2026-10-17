@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useState, type FormEvent, type KeyboardEvent } from 'react';
 import { useLookup } from '../../hooks/useLookup';
 import { DEFAULT_SORT, hasActiveFilters, parseArtworkQuery, serializeArtworkQuery, validateYears, type ArtworkFilters as Filters } from '../../lib/artworks/query';
+import { COUNTRY_NAMES } from '../../util/countries';
 
 interface ArtworkType {
   id: string;
@@ -21,12 +22,44 @@ interface Props {
 const controlClass = 'mt-1 w-full rounded-lg border border-stone-300 bg-white px-3 py-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-900';
 
 function FilterForm({ filters, onApply, lookups }: Props & {
-  lookups: { types: ReturnType<typeof useLookup<ArtworkType>>; materials: ReturnType<typeof useLookup<Material>> };
+  lookups: {
+    types: ReturnType<typeof useLookup<ArtworkType>>;
+    materials: ReturnType<typeof useLookup<Material>>;
+  };
 }) {
   const [draft, setDraft] = useState(filters);
   const [error, setError] = useState<string | null>(null);
+  const [countryOpen, setCountryOpen] = useState(false);
+  const [activeCountryIndex, setActiveCountryIndex] = useState(-1);
   const { types, materials } = lookups;
+  const countryQuery = draft.country?.trim().toLocaleLowerCase() ?? '';
+  const countryOptions = countryQuery
+    ? COUNTRY_NAMES.filter((country) => country.toLocaleLowerCase().includes(countryQuery))
+    : COUNTRY_NAMES;
   const visibleMaterials = materials.data.filter((material) => !draft.artworkTypeId || material.artworkTypeId === draft.artworkTypeId);
+
+  function selectCountry(country: string) {
+    setDraft((previous) => ({ ...previous, country }));
+    setCountryOpen(false);
+    setActiveCountryIndex(-1);
+  }
+
+  function handleCountryKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      setCountryOpen(true);
+      setActiveCountryIndex((index) => Math.min(index + 1, countryOptions.length - 1));
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      setActiveCountryIndex((index) => Math.max(index - 1, 0));
+    } else if (event.key === 'Enter' && countryOpen && activeCountryIndex >= 0) {
+      event.preventDefault();
+      selectCountry(countryOptions[activeCountryIndex]);
+    } else if (event.key === 'Escape') {
+      setCountryOpen(false);
+      setActiveCountryIndex(-1);
+    }
+  }
 
   function changeType(typeId: string) {
     setDraft((previous) => ({
@@ -79,17 +112,40 @@ function FilterForm({ filters, onApply, lookups }: Props & {
       <fieldset>
         <legend>Year range</legend>
         <div className="mt-2 grid grid-cols-2 gap-2">
-          <label>Year from<input className={controlClass} inputMode="numeric" value={draft.yearStart ?? ''}
+          <label>From<input className={controlClass} type="number" min={0} step={1} inputMode="numeric" value={draft.yearStart ?? ''}
             aria-invalid={Boolean(error)} aria-describedby={error ? 'year-error' : undefined}
             onChange={(event) => setDraft({ ...draft, yearStart: event.target.value })} /></label>
-          <label>Year to<input className={controlClass} inputMode="numeric" value={draft.yearEnd ?? ''}
+          <label>To<input className={controlClass} type="number" min={0} step={1} inputMode="numeric" value={draft.yearEnd ?? ''}
             aria-invalid={Boolean(error)} aria-describedby={error ? 'year-error' : undefined}
             onChange={(event) => setDraft({ ...draft, yearEnd: event.target.value })} /></label>
         </div>
         {error && <p id="year-error" role="alert" className="mt-2 text-sm text-red-700">{error}</p>}
       </fieldset>
-      <label className="block">Artist country<input className={controlClass} value={draft.country ?? ''}
-        onChange={(event) => setDraft({ ...draft, country: event.target.value })} /></label>
+      <div className="block">
+        <label htmlFor="artist-country">Artist country</label>
+        <div className="relative w-full">
+          <input id="artist-country" className={controlClass} role="combobox" aria-autocomplete="list"
+            aria-expanded={countryOpen && countryOptions.length > 0} aria-controls="artist-country-options"
+            aria-activedescendant={activeCountryIndex >= 0 ? `artist-country-option-${activeCountryIndex}` : undefined}
+            autoComplete="off" value={draft.country ?? ''}
+            onFocus={() => setCountryOpen(true)}
+            onBlur={() => window.setTimeout(() => setCountryOpen(false), 100)}
+            onKeyDown={handleCountryKeyDown}
+            onChange={(event) => {
+              setDraft({ ...draft, country: event.target.value });
+              setCountryOpen(true);
+              setActiveCountryIndex(-1);
+            }} />
+          {countryOpen && countryQuery && <ul id="artist-country-options" role="listbox"
+            className="absolute left-0 right-0 top-full z-20 mt-1 max-h-60 w-full overflow-y-auto rounded-lg border border-stone-300 bg-white py-1 shadow-lg">
+            {countryOptions.length > 0 ? countryOptions.map((country, index) => <li key={country} className="w-full">
+              <button id={`artist-country-option-${index}`} type="button" role="option" aria-selected={index === activeCountryIndex}
+                className="block w-full px-3 py-2 text-left hover:bg-stone-100 focus-visible:bg-stone-100"
+                onMouseDown={(event) => event.preventDefault()} onClick={() => selectCountry(country)}>{country}</button>
+            </li>) : <li className="px-3 py-2 text-sm text-stone-500">No countries found</li>}
+          </ul>}
+        </div>
+      </div>
       <button type="submit" className="rounded-full bg-stone-900 px-4 py-2 text-white focus-visible:outline-2 focus-visible:outline-offset-2">Apply filters</button>
     </form>
   );

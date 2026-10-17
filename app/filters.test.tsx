@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import Home from './page';
+import Home from '../components/artworks/ArtworkListingPage';
 
 const types = [{ id: '1', name: 'Painting', active: true }, { id: '2', name: 'Sculpture', active: true }];
 const materials = [
@@ -34,8 +34,8 @@ describe('artwork filters', () => {
     fireEvent.change(screen.getByLabelText('Artwork type'), { target: { value: '1' } });
     fireEvent.click(screen.getByLabelText('Oil'));
     fireEvent.click(screen.getByLabelText('Canvas'));
-    fireEvent.change(screen.getByLabelText('Year from'), { target: { value: '1900' } });
-    fireEvent.change(screen.getByLabelText('Year to'), { target: { value: '1900' } });
+    fireEvent.change(screen.getByLabelText('From'), { target: { value: '1900' } });
+    fireEvent.change(screen.getByLabelText('To'), { target: { value: '1900' } });
     fireEvent.change(screen.getByLabelText('Artist country'), { target: { value: ' France ' } });
     fireEvent.click(screen.getByRole('button', { name: 'Apply filters' }));
     await waitFor(() => expect(latestParams().get('country')).toBe('France'));
@@ -65,8 +65,8 @@ describe('artwork filters', () => {
     render(<Home />);
     await screen.findByLabelText('Oil');
     const count = artworkRequests().length;
-    fireEvent.change(screen.getByLabelText('Year from'), { target: { value: '2000' } });
-    fireEvent.change(screen.getByLabelText('Year to'), { target: { value: '1900' } });
+    fireEvent.change(screen.getByLabelText('From'), { target: { value: '2000' } });
+    fireEvent.change(screen.getByLabelText('To'), { target: { value: '1900' } });
     fireEvent.click(screen.getByRole('button', { name: 'Apply filters' }));
     expect(screen.getByRole('alert')).toHaveTextContent('Start year must not exceed end year');
     expect(artworkRequests()).toHaveLength(count);
@@ -82,7 +82,7 @@ describe('artwork filters', () => {
       window.dispatchEvent(new PopStateEvent('popstate'));
     });
     await screen.findByDisplayValue('Italy');
-    expect(screen.getByLabelText('Year from')).toHaveValue('0');
+    expect(screen.getByLabelText('From')).toHaveValue(0);
     await waitFor(() => expect(latestParams().get('country')).toBe('Italy'));
     fireEvent.click(screen.getByRole('button', { name: 'Clear Filters' }));
     await waitFor(() => expect(latestParams().has('country')).toBe(false));
@@ -149,4 +149,23 @@ describe('artwork filters', () => {
     expect(screen.getByLabelText('Artist country')).toHaveValue('France');
   });
 
+
+  it('uses native year selectors labeled From and To', async () => {
+    render(<Home />);
+    expect(await screen.findByLabelText('From')).toHaveAttribute('type', 'number');
+    expect(screen.getByLabelText('To')).toHaveAttribute('type', 'number');
+  });
+
+  it('searches all country suggestions and applies one selection', async () => {
+    render(<Home />);
+    const country = await screen.findByLabelText('Artist country');
+    fireEvent.change(country, { target: { value: 'apan' } });
+    const japan = await screen.findByRole('option', { name: 'Japan' });
+    expect(screen.queryByRole('option', { name: 'France' })).not.toBeInTheDocument();
+    expect(japan.parentElement).toHaveClass('w-full');
+    fireEvent.click(japan);
+    expect(country).toHaveValue('Japan');
+    fireEvent.click(screen.getByRole('button', { name: 'Apply filters' }));
+    await waitFor(() => expect(latestParams().get('country')).toBe('Japan'));
+  });
 });

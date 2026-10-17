@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import Home from "./page";
+import Home from "../components/artworks/ArtworkListingPage";
 
 const mockArtworkPayload = {
   data: [
