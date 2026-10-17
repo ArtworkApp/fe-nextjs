@@ -1,7 +1,9 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ArtworkFilters } from "../components/artworks/ArtworkFilters";
+import { DEFAULT_SORT, parseArtworkQuery, serializeArtworkQuery, writeArtworkQuery, type ArtworkQuery, type ArtworkFilters as FilterValues } from "../lib/artworks/query";
 
 type Artist = {
   id: string;
@@ -38,7 +40,6 @@ type ArtworkResponse = {
   };
 };
 
-const DEFAULT_SORT = "year_desc";
 const PAGE_LIMIT = 21;
 
 function formatPrice(price: number | null | undefined, currency?: string | null) {
@@ -55,14 +56,13 @@ function formatPrice(price: number | null | undefined, currency?: string | null)
   return `$${new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(price)}`;
 }
 
-function buildArtworkUrl(sort: string, page: number) {
-  const params = new URLSearchParams({
-    page: String(page),
-    limit: String(PAGE_LIMIT),
-    sort,
-  });
-
-  return `${process.env.NEXT_PUBLIC_API_URL}/artworks?${params.toString()}`;
+function buildArtworkUrl(query: ArtworkQuery, page: number) {
+  const params = serializeArtworkQuery(query);
+  params.set("page", String(page));
+  params.set("limit", String(PAGE_LIMIT));
+  params.set("sort", query.sort);
+  const base = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "");
+  return `${base}/artworks?${params.toString()}`;
 }
 
 function resolveArtworkImageUrl(imageUrl: string | null | undefined) {
@@ -87,7 +87,9 @@ function resolveArtworkImageUrl(imageUrl: string | null | undefined) {
 }
 
 export default function Home() {
-  const [sort, setSort] = useState(DEFAULT_SORT);
+  const [query, setQuery] = useState<ArtworkQuery>({ filters: { materialIds: [] }, sort: DEFAULT_SORT });
+  const requestController = useRef<AbortController | null>(null);
+  const sort = query.sort;
   const [artworks, setArtworks] = useState<Artwork[]>([]);
   const [page, setPage] = useState(1);
   const [hasNext, setHasNext] = useState(false);
@@ -95,101 +97,77 @@ export default function Home() {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const syncUrl = (nextSort: string) => {
-    const params = new URLSearchParams(window.location.search);
-
-    if (nextSort && nextSort !== DEFAULT_SORT) {
-      params.set("sort", nextSort);
-    } else {
-      params.delete("sort");
-    }
-
-    const nextUrl = params.toString() ? `/?${params.toString()}` : "/";
-    window.history.replaceState({}, "", nextUrl);
-  };
-
-  const fetchArtworkPage = async (nextSort: string, nextPage: number, replace = false) => {
-    const url = buildArtworkUrl(nextSort, nextPage);
-
+  const fetchArtworkPage = useCallback(async (options: { query: ArtworkQuery; page: number; replace: boolean }) => {
+    requestController.current?.abort();
+    const controller = new AbortController();
+    requestController.current = controller;
+    const url = buildArtworkUrl(options.query, options.page);
     try {
-      if (replace) {
+      if (options.replace) {
         setIsLoading(true);
+        setIsLoadingMore(false);
       } else {
         setIsLoadingMore(true);
       }
-
       setError(null);
-
-      const response = await fetch(url, { cache: "no-store" });
-      if (!response.ok) {
-        throw new Error("Unable to load artworks.");
-      }
-
+      const response = await fetch(url, { cache: "no-store", signal: controller.signal });
+      if (!response.ok) throw new Error("Unable to load artworks.");
       const payload = (await response.json()) as ArtworkResponse;
+      if (controller.signal.aborted) return;
       const nextArtworks = Array.isArray(payload.data) ? payload.data : [];
-      const totalPages = payload.pagination?.totalPages ?? 1;
-      setHasNext(nextPage < totalPages);
-
-      if (replace) {
-        setArtworks(nextArtworks);
-      } else {
-        setArtworks((prev) => [...prev, ...nextArtworks]);
-      }
+      setHasNext(options.page < (payload.pagination?.totalPages ?? 1));
+      if (options.replace) setArtworks(nextArtworks);
+      else setArtworks((previous) => [...previous, ...nextArtworks]);
     } catch {
-      setError("Unable to load artworks.");
+      if (!controller.signal.aborted) setError("Unable to load artworks.");
     } finally {
-      if (replace) {
-        setIsLoading(false);
-      } else {
-        setIsLoadingMore(false);
+      if (!controller.signal.aborted) {
+        if (options.replace) setIsLoading(false);
+        else setIsLoadingMore(false);
       }
     }
-  };
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const initialSort = params.get("sort") ?? DEFAULT_SORT;
-
-    if (initialSort !== DEFAULT_SORT) {
-      setSort(initialSort);
-    }
-
-    setPage(1);
-    void fetchArtworkPage(initialSort, 1, true);
-     
   }, []);
 
   useEffect(() => {
-    if (!window.location.search && sort === DEFAULT_SORT) {
-      return;
+    function restoreQuery() {
+      const restored = parseArtworkQuery(new URLSearchParams(window.location.search));
+      setQuery(restored);
+      setPage(1);
+      writeArtworkQuery(restored, "replace");
+      void fetchArtworkPage({ query: restored, page: 1, replace: true });
     }
+    restoreQuery();
+    window.addEventListener("popstate", restoreQuery);
+    return () => {
+      window.removeEventListener("popstate", restoreQuery);
+      requestController.current?.abort();
+    };
+  }, [fetchArtworkPage]);
 
-    syncUrl(sort);
-  }, [sort]);
-
-  const handleSortChange = async (value: string) => {
-    setSort(value);
+  function applyQuery(next: ArtworkQuery) {
+    if (serializeArtworkQuery(next).toString() === serializeArtworkQuery(query).toString()) return;
+    setQuery(next);
     setPage(1);
-    syncUrl(value);
-    await fetchArtworkPage(value, 1, true);
-  };
+    writeArtworkQuery(next, "push");
+    void fetchArtworkPage({ query: next, page: 1, replace: true });
+  }
 
-  const handleLoadMore = async () => {
-    if (!hasNext || isLoadingMore) {
-      return;
-    }
+  function handleSortChange(value: string) {
+    const params = serializeArtworkQuery(query);
+    params.set("sort", value);
+    applyQuery(parseArtworkQuery(params));
+  }
 
+  function handleFiltersChange(filters: FilterValues) {
+    applyQuery({ filters, sort });
+  }
+
+  async function handleLoadMore() {
+    if (!hasNext || isLoadingMore) return;
     const nextPage = page + 1;
     setPage(nextPage);
-    await fetchArtworkPage(sort, nextPage, false);
-  };
-
-  const handleClearFilters = async () => {
-    setSort(DEFAULT_SORT);
-    setPage(1);
-    syncUrl(DEFAULT_SORT);
-    await fetchArtworkPage(DEFAULT_SORT, 1, true);
-  };
+    await fetchArtworkPage({ query, page: nextPage, replace: false });
+  }
 
   return (
     <main className="min-h-screen bg-stone-50 text-stone-900">
@@ -220,23 +198,7 @@ export default function Home() {
         </header>
 
         <div className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
-          <aside className="rounded-3xl border border-stone-200 bg-white p-5 shadow-sm">
-            <h2 className="text-lg font-semibold">Filters</h2>
-            <div className="mt-4 space-y-4 text-sm text-stone-600">
-              <div className="rounded-2xl border border-dashed border-stone-200 p-4">
-                <p className="font-medium text-stone-800">Artist</p>
-                <p className="mt-2">Autocomplete coming soon.</p>
-              </div>
-              <div className="rounded-2xl border border-dashed border-stone-200 p-4">
-                <p className="font-medium text-stone-800">Artwork type</p>
-                <p className="mt-2">Type filters will load from the backend.</p>
-              </div>
-              <div className="rounded-2xl border border-dashed border-stone-200 p-4">
-                <p className="font-medium text-stone-800">Materials</p>
-                <p className="mt-2">Material selections are part of the backend contract.</p>
-              </div>
-            </div>
-          </aside>
+          <ArtworkFilters filters={query.filters} onApply={handleFiltersChange} />
 
           <section>
             {error ? (
@@ -245,7 +207,7 @@ export default function Home() {
                 <p className="mt-2">Please try again.</p>
                 <button
                   type="button"
-                  onClick={() => void fetchArtworkPage(sort, page || 1, true)}
+                  onClick={() => void fetchArtworkPage({ query, page: page || 1, replace: true })}
                   className="mt-4 rounded-full bg-red-600 px-4 py-2 font-medium text-white"
                 >
                   Retry
@@ -264,13 +226,7 @@ export default function Home() {
               <div className="rounded-3xl border border-stone-200 bg-white p-10 text-center shadow-sm">
                 <p className="text-2xl font-semibold text-stone-900">No artworks found.</p>
                 <p className="mt-3 text-stone-600">Try changing your filters.</p>
-                <button
-                  type="button"
-                  onClick={() => void handleClearFilters()}
-                  className="mt-6 rounded-full bg-stone-900 px-4 py-2 font-medium text-white"
-                >
-                  Clear Filters
-                </button>
+
               </div>
             ) : (
               <>
