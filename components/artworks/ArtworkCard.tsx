@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import { useState } from 'react';
+import { apiBaseUrl } from '../../lib/apiBaseUrl';
 
 export interface ArtworkCardData {
   id: string;
@@ -23,10 +24,10 @@ function resolveImageUrl(path: string | null | undefined): string | null {
   if (!path) return null;
   if (/^https?:\/\//i.test(path)) return path;
 
-  const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL;
-  if (!apiBaseUrl) return null;
+  const baseUrl = apiBaseUrl();
+  if (!baseUrl) return null;
   try {
-    return new URL(path, new URL(apiBaseUrl).origin).toString();
+    return new URL(path, new URL(baseUrl).origin).toString();
   } catch {
     return null;
   }

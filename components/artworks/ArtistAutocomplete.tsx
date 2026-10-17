@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, type KeyboardEvent } from 'react';
+import { apiBaseUrl } from '../../lib/apiBaseUrl';
 
 export interface ArtistOption {
   id: string;
@@ -44,7 +45,7 @@ export function ArtistAutocomplete({ selectedId, selectedArtist, onSelect }: Pro
     const timeout = window.setTimeout(() => {
       async function searchArtists() {
         try {
-          const base = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '');
+          const base = apiBaseUrl();
           if (!base) throw new Error('API URL is not configured');
           const params = new URLSearchParams({ search: term, limit: '21' });
           const response = await fetch(`${base}/artists?${params}`, { signal: controller.signal });

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { apiBaseUrl } from '../lib/apiBaseUrl';
 
 interface LookupState<T> {
   data: T[];
@@ -14,7 +15,7 @@ export function useLookup<T>(endpoint: string) {
     const controller = new AbortController();
     async function load() {
       try {
-        const base = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, '');
+        const base = apiBaseUrl();
         const response = await fetch(`${base}/${endpoint}`, { signal: controller.signal });
         if (!response.ok) throw new Error('Lookup failed');
         const payload = await response.json() as { data: T[] };

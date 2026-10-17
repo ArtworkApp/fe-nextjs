@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArtworkFilters } from "./ArtworkFilters";
 import { ArtworkCard, type ArtworkCardData } from "./ArtworkCard";
+import { apiBaseUrl } from "../../lib/apiBaseUrl";
 import { DEFAULT_SORT, parseArtworkQuery, serializeArtworkQuery, writeArtworkQuery, type ArtworkQuery, type ArtworkFilters as FilterValues } from "../../lib/artworks/query";
 
 type ArtworkResponse = {
@@ -22,7 +23,7 @@ function buildArtworkUrl(query: ArtworkQuery, page: number) {
   params.set("page", String(page));
   params.set("limit", String(PAGE_LIMIT));
   params.set("sort", query.sort);
-  const base = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "");
+  const base = apiBaseUrl();
   return `${base}/artworks?${params.toString()}`;
 }
 
