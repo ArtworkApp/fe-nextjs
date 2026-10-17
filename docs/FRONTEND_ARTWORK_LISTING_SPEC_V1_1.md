@@ -80,11 +80,11 @@ Each card displays:
 
 ### 5.1 Image
 
-- Artwork API exposes nullable `imageUrl`.
+- Artwork API exposes a nullable `primaryImage` object with `url` and `altText`.
 - If present, render the image with meaningful alt text.
 - If null or empty, render an artwork placeholder.
 - Maintain a consistent image aspect ratio.
-- **Backend dependency:** add `imageUrl` to the Artwork model and serialized listing response.
+- **Backend dependency:** add `primaryImage: { url, altText } | null` to the Artwork model and serialized listing response.
 
 ### 5.2 Artist Names
 
@@ -238,7 +238,7 @@ Example:
 }
 ```
 
-- Artwork records shall include `imageUrl` after the backend change.
+- Artwork records shall include `primaryImage: { url, altText } | null` after the backend change.
 - Treat artist, artwork type, and material relationship fields as arrays.
 
 ### Filter-option endpoints
@@ -347,8 +347,8 @@ Mock responses must match the backend contract.
 
 Before completing frontend integration:
 
-- Add nullable `imageUrl` to the Artwork model.
-- Include `imageUrl` in the artwork listing response.
+- Add nullable `primaryImage: { url, altText } | null` to the Artwork model.
+- Include the `primaryImage` object in the artwork listing response.
 - Update backend tests.
 
 No backend work is needed for artist-name sorting or Sold badges because those features are excluded.
@@ -387,7 +387,7 @@ No backend work is needed for artist-name sorting or Sold badges because those f
 - [ ] Responsive desktop, tablet, and mobile layouts implemented
 - [ ] Accessibility requirements completed
 - [ ] Frontend tests completed
-- [ ] Backend `imageUrl` dependency satisfied
+- [ ] Backend `primaryImage` dependency satisfied
 
 ---
 
