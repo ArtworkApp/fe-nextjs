@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import Home from '../components/artworks/ArtworkListingPage';
+import Home from './ArtworkListingPage';
 
 const types = [{ id: '1', name: 'Painting', active: true }, { id: '2', name: 'Sculpture', active: true }];
 const materials = [
