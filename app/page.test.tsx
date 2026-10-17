@@ -123,4 +123,33 @@ describe("Artwork listing page", () => {
       );
     });
   });
+
+  it("keeps loaded cards visible and retries the failed page after Load More errors", async () => {
+    let pageTwoCalls = 0;
+    global.fetch = vi.fn((input: RequestInfo | URL) => {
+      const url = new URL(String(input));
+      if (url.pathname.endsWith('/artworks') && url.searchParams.get('page') === '2') {
+        pageTwoCalls += 1;
+        if (pageTwoCalls === 1) return Promise.resolve({ ok: false } as Response);
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ data: [mockArtworkPayload.data[1]], pagination: { page: 2, limit: 21, total: 22, totalPages: 2 } }),
+        } as Response);
+      }
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({ data: [mockArtworkPayload.data[0]], pagination: { page: 1, limit: 21, total: 22, totalPages: 2 } }),
+      } as Response);
+    }) as typeof fetch;
+
+    render(<Home />);
+    expect(await screen.findByText('Mona Lisa')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Load More' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Unable to load more artworks.');
+    expect(screen.getByText('Mona Lisa')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Retry Load More' }));
+    expect(await screen.findByText('Sunflowers')).toBeInTheDocument();
+    expect(pageTwoCalls).toBe(2);
+  });
 });

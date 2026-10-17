@@ -29,6 +29,7 @@ function buildArtworkUrl(query: ArtworkQuery, page: number) {
 export default function Home() {
   const [query, setQuery] = useState<ArtworkQuery>({ filters: { materialIds: [] }, sort: DEFAULT_SORT });
   const requestController = useRef<AbortController | null>(null);
+  const loadingMoreRef = useRef(false);
   const sort = query.sort;
   const [artworks, setArtworks] = useState<ArtworkCardData[]>([]);
   const [page, setPage] = useState(1);
@@ -36,8 +37,12 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loadMoreError, setLoadMoreError] = useState(false);
 
   const fetchArtworkPage = useCallback(async (options: { query: ArtworkQuery; page: number; replace: boolean }) => {
+    if (!options.replace && loadingMoreRef.current) return;
+    if (options.replace) loadingMoreRef.current = false;
+    else loadingMoreRef.current = true;
     requestController.current?.abort();
     const controller = new AbortController();
     requestController.current = controller;
@@ -46,8 +51,10 @@ export default function Home() {
       if (options.replace) {
         setIsLoading(true);
         setIsLoadingMore(false);
+        setLoadMoreError(false);
       } else {
         setIsLoadingMore(true);
+        setLoadMoreError(false);
       }
       setError(null);
       const response = await fetch(url, { cache: "no-store", signal: controller.signal });
@@ -59,11 +66,17 @@ export default function Home() {
       if (options.replace) setArtworks(nextArtworks);
       else setArtworks((previous) => [...previous, ...nextArtworks]);
     } catch {
-      if (!controller.signal.aborted) setError("Unable to load artworks.");
+      if (!controller.signal.aborted) {
+        if (options.replace) setError("Unable to load artworks.");
+        else setLoadMoreError(true);
+      }
     } finally {
       if (!controller.signal.aborted) {
         if (options.replace) setIsLoading(false);
-        else setIsLoadingMore(false);
+        else {
+          setIsLoadingMore(false);
+          loadingMoreRef.current = false;
+        }
       }
     }
   }, []);
@@ -147,7 +160,7 @@ export default function Home() {
                 <p className="mt-2">Please try again.</p>
                 <button
                   type="button"
-                  onClick={() => void fetchArtworkPage({ query, page: page || 1, replace: true })}
+                  onClick={() => void fetchArtworkPage({ query, page: 1, replace: true })}
                   className="mt-4 rounded-full bg-red-600 px-4 py-2 font-medium text-white"
                 >
                   Retry
@@ -174,7 +187,15 @@ export default function Home() {
                   {artworks.map((artwork) => <ArtworkCard key={artwork.id} artwork={artwork} />)}
                 </div>
 
-                {hasNext && (
+                {loadMoreError && <div role="alert" className="mt-6 text-center text-red-700">
+                  <p>Unable to load more artworks.</p>
+                  <button type="button" onClick={() => void fetchArtworkPage({ query, page, replace: false })}
+                    className="mt-2 rounded-full border border-red-300 px-4 py-2 font-medium underline">
+                    Retry Load More
+                  </button>
+                </div>}
+
+                {hasNext && !loadMoreError && (
                   <div className="mt-8 flex justify-center">
                     <button
                       type="button"
