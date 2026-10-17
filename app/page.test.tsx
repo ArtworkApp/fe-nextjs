@@ -33,6 +33,15 @@ const mockArtworkPayload = {
       ],
       artworkType: [{ id: "2", name: "Painting" }],
     },
+    {
+      id: "3",
+      title: "Untitled study",
+      primaryImage: null,
+      price: 5000,
+      currency: null,
+      artist: [],
+      artworkType: [],
+    },
   ],
   pagination: { page: 1, limit: 21, total: 2, totalPages: 1 },
 };
@@ -66,12 +75,23 @@ describe("Artwork listing page", () => {
     expect(screen.getByText("Vincent van Gogh, Paul Gauguin")).toBeInTheDocument();
     expect(screen.getByText("$120,000")).toBeInTheDocument();
     expect(screen.getByText("Price on Request")).toBeInTheDocument();
+    expect(screen.getByText("5,000")).toBeInTheDocument();
+    expect(screen.getByText("Unknown artist")).toBeInTheDocument();
+    expect(screen.getAllByText("Artwork").length).toBeGreaterThan(0);
     expect(
       screen.getByRole("img", { name: "Mona Lisa by Leonardo da Vinci" }),
     ).toHaveAttribute(
       "src",
       "http://localhost:3001/api/v1/artworks/1/images/101",
     );
+  });
+
+  it("shows the artwork placeholder when an image fails to load", async () => {
+    render(<Home />);
+    const image = await screen.findByRole("img", { name: "Mona Lisa by Leonardo da Vinci" });
+    fireEvent.error(image);
+    expect(screen.queryByRole("img", { name: "Mona Lisa by Leonardo da Vinci" })).not.toBeInTheDocument();
+    expect(screen.getAllByText("Artwork").length).toBeGreaterThan(0);
   });
 
   it("shows the empty state when the backend returns no artworks", async () => {

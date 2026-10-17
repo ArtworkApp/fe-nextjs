@@ -1,37 +1,12 @@
 "use client";
 
-import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArtworkFilters } from "./ArtworkFilters";
+import { ArtworkCard, type ArtworkCardData } from "./ArtworkCard";
 import { DEFAULT_SORT, parseArtworkQuery, serializeArtworkQuery, writeArtworkQuery, type ArtworkQuery, type ArtworkFilters as FilterValues } from "../../lib/artworks/query";
 
-type Artist = {
-  id: string;
-  name: string;
-  country: string | null;
-};
-
-type ArtworkImage = {
-  id: string;
-  url: string;
-  altText: string | null;
-  mimeType: string;
-  isPrimary: boolean;
-  sortOrder: number;
-  originalFilename: string;
-};
-
-type Artwork = {
-  id: string;
-  title: string;
-  primaryImage: ArtworkImage | null;
-  price?: number | null;
-  currency?: string | null;
-  artist: Artist[];
-};
-
 type ArtworkResponse = {
-  data: Artwork[];
+  data: ArtworkCardData[];
   pagination?: {
     page: number;
     limit: number;
@@ -42,20 +17,6 @@ type ArtworkResponse = {
 
 const PAGE_LIMIT = 21;
 
-function formatPrice(price: number | null | undefined, currency?: string | null) {
-  if (price == null) return "Price on Request";
-
-  if (currency) {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency,
-      maximumFractionDigits: 0,
-    }).format(price);
-  }
-
-  return `$${new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(price)}`;
-}
-
 function buildArtworkUrl(query: ArtworkQuery, page: number) {
   const params = serializeArtworkQuery(query);
   params.set("page", String(page));
@@ -65,32 +26,11 @@ function buildArtworkUrl(query: ArtworkQuery, page: number) {
   return `${base}/artworks?${params.toString()}`;
 }
 
-function resolveArtworkImageUrl(imageUrl: string | null | undefined) {
-  if (!imageUrl) {
-    return null;
-  }
-
-  if (/^https?:\/\//i.test(imageUrl)) {
-    return imageUrl;
-  }
-
-  const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL;
-  if (!apiBaseUrl) {
-    return null;
-  }
-
-  try {
-    return new URL(imageUrl, new URL(apiBaseUrl).origin).toString();
-  } catch {
-    return null;
-  }
-}
-
 export default function Home() {
   const [query, setQuery] = useState<ArtworkQuery>({ filters: { materialIds: [] }, sort: DEFAULT_SORT });
   const requestController = useRef<AbortController | null>(null);
   const sort = query.sort;
-  const [artworks, setArtworks] = useState<Artwork[]>([]);
+  const [artworks, setArtworks] = useState<ArtworkCardData[]>([]);
   const [page, setPage] = useState(1);
   const [hasNext, setHasNext] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -214,7 +154,7 @@ export default function Home() {
                 </button>
               </div>
             ) : isLoading ? (
-              <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+              <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
                 {Array.from({ length: 6 }).map((_, index) => (
                   <div
                     key={index}
@@ -230,53 +170,8 @@ export default function Home() {
               </div>
             ) : (
               <>
-                <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-                  {artworks.map((artwork) => {
-                    const artistNames = artwork.artist.map((artist) => artist.name);
-                    const artists = artistNames.length
-                      ? artistNames.join(", ")
-                      : "Unknown artist";
-                    const imageUrl = resolveArtworkImageUrl(
-                      artwork.primaryImage?.url,
-                    );
-                    const imageAlt =
-                      artwork.primaryImage?.altText?.trim() ||
-                      `${artwork.title} by ${artists}`;
-
-                    return (
-                      <article
-                        key={artwork.id}
-                        className="overflow-hidden rounded-3xl border border-stone-200 bg-white shadow-sm"
-                      >
-                        <div className="relative h-56 overflow-hidden bg-stone-100">
-                          {imageUrl ? (
-                            <Image
-                              src={imageUrl}
-                              alt={imageAlt}
-                              fill
-                              unoptimized
-                              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                              className="object-cover"
-                            />
-                          ) : (
-                            <div className="flex h-full items-center justify-center bg-gradient-to-br from-stone-200 to-stone-100 text-sm font-medium uppercase tracking-[0.2em] text-stone-500">
-                              Artwork
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="space-y-3 p-4">
-                          <h3 className="line-clamp-2 text-lg font-semibold text-stone-900">
-                            {artwork.title}
-                          </h3>
-                          <p className="line-clamp-2 text-sm text-stone-600">{artists}</p>
-                          <p className="text-lg font-semibold text-stone-900">
-                            {formatPrice(artwork.price, artwork.currency)}
-                          </p>
-                        </div>
-                      </article>
-                    );
-                  })}
+                <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+                  {artworks.map((artwork) => <ArtworkCard key={artwork.id} artwork={artwork} />)}
                 </div>
 
                 {hasNext && (
