@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import Home from '../components/artworks/ArtworkListingPage';
 
@@ -190,5 +190,30 @@ describe('artwork filters', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Clear artist' }));
     fireEvent.click(screen.getByRole('button', { name: 'Apply filters' }));
     await waitFor(() => expect(latestParams().has('artistId')).toBe(false));
+  });
+
+  it('discards uncommitted mobile filter edits when the sheet is dismissed', async () => {
+    render(<Home />);
+    await screen.findByText('No artworks found.');
+    const trigger = screen.getByRole('button', { name: 'Open filters' });
+    fireEvent.click(trigger);
+    const dialog = screen.getByRole('dialog', { name: 'Filters' });
+    fireEvent.change(within(dialog).getByLabelText('From'), { target: { value: '1850' } });
+    fireEvent.keyDown(dialog, { key: 'Escape' });
+    expect(screen.queryByRole('dialog', { name: 'Filters' })).not.toBeInTheDocument();
+    expect(trigger).toHaveFocus();
+    fireEvent.click(trigger);
+    expect(within(screen.getByRole('dialog', { name: 'Filters' })).getByLabelText('From')).toHaveValue(null);
+  });
+
+  it('applies filters and closes the mobile sheet', async () => {
+    render(<Home />);
+    await screen.findByText('No artworks found.');
+    fireEvent.click(screen.getByRole('button', { name: 'Open filters' }));
+    const dialog = screen.getByRole('dialog', { name: 'Filters' });
+    fireEvent.change(within(dialog).getByLabelText('Artist country'), { target: { value: 'France' } });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Apply filters' }));
+    expect(screen.queryByRole('dialog', { name: 'Filters' })).not.toBeInTheDocument();
+    await waitFor(() => expect(latestParams().get('country')).toBe('France'));
   });
 });

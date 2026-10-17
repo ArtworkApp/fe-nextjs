@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type FormEvent, type KeyboardEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { useLookup } from '../../hooks/useLookup';
 import { DEFAULT_SORT, hasActiveFilters, parseArtworkQuery, serializeArtworkQuery, validateYears, type ArtworkFilters as Filters } from '../../lib/artworks/query';
 import { COUNTRY_NAMES } from '../../util/countries';
@@ -163,6 +163,10 @@ export function ArtworkFilters({ filters, onApply }: Props) {
   const types = useLookup<ArtworkType>('artwork-types');
   const materials = useLookup<Material>('materials');
   const [selectedArtist, setSelectedArtist] = useState<ArtistOption | null>(null);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [formVersion, setFormVersion] = useState(0);
+  const filterTriggerRef = useRef<HTMLButtonElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
   const key = serializeArtworkQuery({ filters, sort: DEFAULT_SORT }).toString();
   const selected = [
     filters.artistId && `Artist ID: ${filters.artistId}`,
@@ -172,18 +176,76 @@ export function ArtworkFilters({ filters, onApply }: Props) {
     filters.yearEnd !== undefined && `To ${filters.yearEnd}`,
     filters.country,
   ].filter((value): value is string => typeof value === 'string' && value.length > 0);
-  return <aside className="rounded-3xl border border-stone-200 bg-white p-5 shadow-sm">
-    <h2 className="text-lg font-semibold">Filters</h2>
-    {hasActiveFilters(filters) && <div className="mt-3">
-      <ul aria-label="Applied filters" className="flex flex-wrap gap-2">
-        {selected.map((label, index) => <li key={`${index}-${label}`} className="rounded-full bg-stone-100 px-3 py-1 text-sm">{label}</li>)}
-      </ul>
-      <button type="button" onClick={() => {
-        setSelectedArtist(null);
-        onApply({ materialIds: [] });
-      }} className="mt-3 underline">Clear Filters</button>
-    </div>}
-    <FilterForm key={key} filters={filters} onApply={onApply} selectedArtist={selectedArtist}
-      onArtistSelect={setSelectedArtist} lookups={{ types, materials }} />
-  </aside>;
+
+  function closeMobileSheet() {
+    setFormVersion((version) => version + 1);
+    setMobileOpen(false);
+  }
+
+  function applyFilters(nextFilters: Filters) {
+    onApply(nextFilters);
+    setMobileOpen(false);
+  }
+
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const filterTrigger = filterTriggerRef.current;
+    closeButtonRef.current?.focus();
+    function handleEscape(event: globalThis.KeyboardEvent) {
+      if (event.key === 'Escape') closeMobileSheet();
+    }
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+      filterTrigger?.focus();
+    };
+  }, [mobileOpen]);
+
+  function trapDialogFocus(event: KeyboardEvent<HTMLElement>) {
+    if (event.key !== 'Tab') return;
+    const focusable = event.currentTarget.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    );
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (!first || !last) return;
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
+
+  return <>
+    <button ref={filterTriggerRef} type="button" aria-expanded={mobileOpen} aria-controls="artwork-filter-panel"
+      onClick={() => setMobileOpen(true)} className="mb-4 rounded-full border border-stone-300 bg-white px-4 py-2 font-medium lg:hidden">
+      Open filters{hasActiveFilters(filters) ? ` (${selected.length})` : ''}
+    </button>
+    {mobileOpen && <button type="button" aria-label="Close filters" onClick={closeMobileSheet}
+      className="fixed inset-0 z-40 bg-black/50 lg:hidden" />}
+    <aside id="artwork-filter-panel" onKeyDown={trapDialogFocus}
+      role={mobileOpen ? 'dialog' : undefined} aria-modal={mobileOpen || undefined} aria-labelledby="artwork-filter-heading"
+      className={mobileOpen
+        ? 'fixed inset-x-0 bottom-0 z-50 max-h-[90dvh] overflow-y-auto rounded-t-3xl border border-stone-200 bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl lg:sticky lg:top-4 lg:block lg:max-h-[calc(100vh-2rem)] lg:rounded-3xl'
+        : 'hidden rounded-3xl border border-stone-200 bg-white p-5 shadow-sm lg:sticky lg:top-4 lg:block'}>
+      <div className="flex items-center justify-between gap-4">
+        <h2 id="artwork-filter-heading" className="text-lg font-semibold">Filters</h2>
+        {mobileOpen && <button ref={closeButtonRef} type="button" onClick={closeMobileSheet} className="rounded-full px-3 py-2 underline lg:hidden">Close</button>}
+      </div>
+      {hasActiveFilters(filters) && <div className="mt-3">
+        <ul aria-label="Applied filters" className="flex flex-wrap gap-2">
+          {selected.map((label, index) => <li key={`${index}-${label}`} className="rounded-full bg-stone-100 px-3 py-1 text-sm">{label}</li>)}
+        </ul>
+        <button type="button" onClick={() => {
+          setSelectedArtist(null);
+          onApply({ materialIds: [] });
+          setMobileOpen(false);
+        }} className="mt-3 underline">Clear Filters</button>
+      </div>}
+      <FilterForm key={`${key}-${formVersion}`} filters={filters} onApply={applyFilters} selectedArtist={selectedArtist}
+        onArtistSelect={setSelectedArtist} lookups={{ types, materials }} />
+    </aside>
+  </>;
 }
