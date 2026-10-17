@@ -94,7 +94,7 @@ function FilterForm({ filters, onApply, selectedArtist, onArtistSelect, lookups 
       <div>
         <label htmlFor="artwork-type">Artwork type</label>
         <select id="artwork-type" className={controlClass} value={draft.artworkTypeId ?? ''}
-          disabled={types.loading || types.failed || materials.loading || materials.failed}
+        disabled={types.loading || types.failed || materials.loading}
           onChange={(event) => changeType(event.target.value)}>
           <option value="">All artwork types</option>
           {draft.artworkTypeId && !types.data.some((type) => type.id === draft.artworkTypeId) &&

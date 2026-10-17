@@ -98,6 +98,7 @@ describe('artwork filters', () => {
     });
     render(<Home />);
     expect(await screen.findByText('Unable to load materials.')).toBeInTheDocument();
+    expect(screen.getByLabelText('Artwork type')).toBeEnabled();
     expect(screen.getByLabelText('Artist country')).toBeEnabled();
     vi.mocked(fetch).mockImplementation(original);
     fireEvent.click(screen.getByRole('button', { name: 'Retry materials' }));
