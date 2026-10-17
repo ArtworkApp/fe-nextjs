@@ -26,7 +26,7 @@ function buildArtworkUrl(query: ArtworkQuery, page: number) {
   return `${base}/artworks?${params.toString()}`;
 }
 
-export default function Home() {
+export default function ArtworkListingPage() {
   const [query, setQuery] = useState<ArtworkQuery>({ filters: { materialIds: [] }, sort: DEFAULT_SORT });
   const requestController = useRef<AbortController | null>(null);
   const loadingMoreRef = useRef(false);
