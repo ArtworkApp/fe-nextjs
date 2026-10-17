@@ -4,17 +4,28 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 
 type Artist = {
-  id: number;
+  id: string;
   name: string;
+  country: string | null;
+};
+
+type ArtworkImage = {
+  id: string;
+  url: string;
+  altText: string | null;
+  mimeType: string;
+  isPrimary: boolean;
+  sortOrder: number;
+  originalFilename: string;
 };
 
 type Artwork = {
-  id: number;
+  id: string;
   title: string;
-  imageUrl?: string | null;
+  primaryImage: ArtworkImage | null;
   price?: number | null;
   currency?: string | null;
-  artists?: Artist[];
+  artist: Artist[];
 };
 
 type ArtworkResponse = {
@@ -52,6 +63,27 @@ function buildArtworkUrl(sort: string, page: number) {
   });
 
   return `${process.env.NEXT_PUBLIC_API_URL}/artworks?${params.toString()}`;
+}
+
+function resolveArtworkImageUrl(imageUrl: string | null | undefined) {
+  if (!imageUrl) {
+    return null;
+  }
+
+  if (/^https?:\/\//i.test(imageUrl)) {
+    return imageUrl;
+  }
+
+  const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (!apiBaseUrl) {
+    return null;
+  }
+
+  try {
+    return new URL(imageUrl, new URL(apiBaseUrl).origin).toString();
+  } catch {
+    return null;
+  }
 }
 
 export default function Home() {
@@ -244,7 +276,16 @@ export default function Home() {
               <>
                 <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
                   {artworks.map((artwork) => {
-                    const artists = artwork.artists?.length ? artwork.artists.map((artist) => artist.name).join(", ") : "Unknown artist";
+                    const artistNames = artwork.artist.map((artist) => artist.name);
+                    const artists = artistNames.length
+                      ? artistNames.join(", ")
+                      : "Unknown artist";
+                    const imageUrl = resolveArtworkImageUrl(
+                      artwork.primaryImage?.url,
+                    );
+                    const imageAlt =
+                      artwork.primaryImage?.altText?.trim() ||
+                      `${artwork.title} by ${artists}`;
 
                     return (
                       <article
@@ -252,10 +293,10 @@ export default function Home() {
                         className="overflow-hidden rounded-3xl border border-stone-200 bg-white shadow-sm"
                       >
                         <div className="relative h-56 overflow-hidden bg-stone-100">
-                          {artwork.imageUrl ? (
+                          {imageUrl ? (
                             <Image
-                              src={artwork.imageUrl}
-                              alt={`${artwork.title} by ${artists}`}
+                              src={imageUrl}
+                              alt={imageAlt}
                               fill
                               unoptimized
                               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"

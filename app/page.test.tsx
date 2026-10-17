@@ -1,25 +1,37 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import Home from "./page";
 
 const mockArtworkPayload = {
   data: [
     {
-      id: 1,
+      id: "1",
       title: "Mona Lisa",
-      imageUrl: "https://example.com/mona.jpg",
+      primaryImage: {
+        id: "101",
+        url: "/api/v1/artworks/1/images/101",
+        altText: null,
+        mimeType: "image/jpeg",
+        isPrimary: true,
+        sortOrder: 0,
+        originalFilename: "mona.jpg",
+      },
       price: 120000,
       currency: "USD",
-      artists: [{ id: 10, name: "Leonardo da Vinci" }],
-      artworkType: { id: 1, name: "Painting" },
+      artist: [{ id: "10", name: "Leonardo da Vinci", country: "Italy" }],
+      artworkType: [{ id: "1", name: "Painting" }],
     },
     {
-      id: 2,
+      id: "2",
       title: "Sunflowers",
-      imageUrl: null,
+      primaryImage: null,
       price: null,
       currency: null,
-      artists: [{ id: 11, name: "Vincent van Gogh" }, { id: 12, name: "Paul Gauguin" }],
-      artworkType: { id: 2, name: "Painting" },
+      artist: [
+        { id: "11", name: "Vincent van Gogh", country: "Netherlands" },
+        { id: "12", name: "Paul Gauguin", country: "France" },
+      ],
+      artworkType: [{ id: "2", name: "Painting" }],
     },
   ],
   pagination: { page: 1, limit: 21, total: 2, totalPages: 1 },
@@ -27,6 +39,7 @@ const mockArtworkPayload = {
 
 beforeEach(() => {
   window.history.replaceState({}, "", "/");
+  vi.stubEnv("NEXT_PUBLIC_API_URL", "http://localhost:3001/api/v1");
   global.fetch = vi.fn((input: RequestInfo | URL) => {
     const url = String(input);
 
@@ -50,8 +63,15 @@ describe("Artwork listing page", () => {
 
     expect(await screen.findByText("Mona Lisa")).toBeInTheDocument();
     expect(screen.getByText("Leonardo da Vinci")).toBeInTheDocument();
+    expect(screen.getByText("Vincent van Gogh, Paul Gauguin")).toBeInTheDocument();
     expect(screen.getByText("$120,000")).toBeInTheDocument();
     expect(screen.getByText("Price on Request")).toBeInTheDocument();
+    expect(
+      screen.getByRole("img", { name: "Mona Lisa by Leonardo da Vinci" }),
+    ).toHaveAttribute(
+      "src",
+      "http://localhost:3001/api/v1/artworks/1/images/101",
+    );
   });
 
   it("shows the empty state when the backend returns no artworks", async () => {
