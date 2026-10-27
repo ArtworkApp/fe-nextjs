@@ -23,6 +23,8 @@ export function AuthForm({ mode, next }: { mode: 'login' | 'register'; next?: st
   const destination = safeNextPath(next);
   const [requestError, setRequestError] = useState('');
   const [alreadyExists, setAlreadyExists] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
   const pending = useRef(false);
   const { register, handleSubmit, setValue, setError, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(formSchema.refine(
@@ -74,6 +76,8 @@ export function AuthForm({ mode, next }: { mode: 'login' | 'register'; next?: st
     } finally {
       setValue('password', '');
       setValue('confirmPassword', '');
+      setShowPassword(false);
+      setShowConfirmation(false);
       pending.current = false;
     }
   }
@@ -97,12 +101,19 @@ export function AuthForm({ mode, next }: { mode: 'login' | 'register'; next?: st
             </div>
             <div>
               <label className="block font-medium" htmlFor="password">Password</label>
-              <input id="password" type="password" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} aria-invalid={!!errors.password} aria-describedby={errors.password ? 'password-error' : undefined} className="mt-2 w-full rounded-lg border border-stone-300 px-3 py-3 focus-visible:outline-2 focus-visible:outline-offset-2" {...register('password')} />
+              <div className="mt-2 flex items-center gap-2">
+                <input id="password" type={showPassword ? 'text' : 'password'} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} aria-invalid={!!errors.password} aria-describedby={errors.password ? 'password-hint password-error' : 'password-hint'} className="min-w-0 flex-1 rounded-lg border border-stone-300 px-3 py-3 focus-visible:outline-2 focus-visible:outline-offset-2" {...register('password')} />
+                <button type="button" aria-label={showPassword ? 'Hide password' : 'Show password'} aria-controls="password" aria-pressed={showPassword} onClick={() => setShowPassword((visible) => !visible)} className="rounded-lg border border-stone-300 px-3 py-3 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2">{showPassword ? 'Hide' : 'Show'}</button>
+              </div>
+              <p id="password-hint" className="mt-1 text-sm text-stone-600">Use at least 12 characters.</p>
               {errors.password && <p id="password-error" className="mt-1 text-sm text-red-700">{errors.password.message}</p>}
             </div>
             {mode === 'register' && <div>
               <label className="block font-medium" htmlFor="confirmPassword">Confirm password</label>
-              <input id="confirmPassword" type="password" autoComplete="new-password" aria-invalid={!!errors.confirmPassword} aria-describedby={errors.confirmPassword ? 'confirmPassword-error' : undefined} className="mt-2 w-full rounded-lg border border-stone-300 px-3 py-3 focus-visible:outline-2 focus-visible:outline-offset-2" {...register('confirmPassword')} />
+              <div className="mt-2 flex items-center gap-2">
+                <input id="confirmPassword" type={showConfirmation ? 'text' : 'password'} autoComplete="new-password" aria-invalid={!!errors.confirmPassword} aria-describedby={errors.confirmPassword ? 'confirmPassword-error' : undefined} className="min-w-0 flex-1 rounded-lg border border-stone-300 px-3 py-3 focus-visible:outline-2 focus-visible:outline-offset-2" {...register('confirmPassword')} />
+                <button type="button" aria-label={showConfirmation ? 'Hide confirmation password' : 'Show confirmation password'} aria-controls="confirmPassword" aria-pressed={showConfirmation} onClick={() => setShowConfirmation((visible) => !visible)} className="rounded-lg border border-stone-300 px-3 py-3 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2">{showConfirmation ? 'Hide' : 'Show'}</button>
+              </div>
               {errors.confirmPassword && <p id="confirmPassword-error" className="mt-1 text-sm text-red-700">{errors.confirmPassword.message}</p>}
             </div>}
             {requestError && <p role="status" aria-live="polite" className="text-sm text-red-700">{requestError} {alreadyExists && <Link className="font-semibold underline" href={switchHref}>Sign in instead</Link>}</p>}

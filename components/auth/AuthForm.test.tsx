@@ -22,6 +22,31 @@ beforeEach(() => {
 });
 
 describe('email authentication', () => {
+  it.each(['login', 'register'] as const)('explains the password rule and lets users reveal it on %s', (mode) => {
+    render(<AuthForm mode={mode} />);
+    const input = screen.getByLabelText('Password');
+    expect(screen.getByText('Use at least 12 characters.')).toBeInTheDocument();
+    expect(input).toHaveAttribute('aria-describedby', 'password-hint');
+    fireEvent.change(input, { target: { value: password } });
+    fireEvent.click(screen.getByRole('button', { name: 'Show password' }));
+    expect(input).toHaveAttribute('type', 'text');
+    expect(input).toHaveValue(password);
+    expect(screen.getByRole('button', { name: 'Hide password' })).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(screen.getByRole('button', { name: 'Hide password' }));
+    expect(input).toHaveAttribute('type', 'password');
+    expect(input).toHaveValue(password);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('reveals confirmation independently of the password on registration', () => {
+    render(<AuthForm mode="register" />);
+    const passwordInput = screen.getByLabelText('Password');
+    const confirmation = screen.getByLabelText('Confirm password');
+    fireEvent.click(screen.getByRole('button', { name: 'Show confirmation password' }));
+    expect(confirmation).toHaveAttribute('type', 'text');
+    expect(passwordInput).toHaveAttribute('type', 'password');
+  });
+
   it('rejects invalid input and confirmation mismatch before a request', async () => {
     render(<AuthForm mode="register" next="/dashboard" />);
     fireEvent.click(screen.getByRole('button', { name: 'Create account' }));
