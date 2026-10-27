@@ -1,12 +1,11 @@
 import Link from "next/link";
+import { SiteHeader } from "../components/SiteHeader";
 
 export default function Home() {
   return (
     <main className="min-h-screen bg-stone-50 px-6 py-10 text-stone-900">
       <div className="mx-auto max-w-5xl">
-        <header>
-          <Link className="text-lg font-semibold" href="/">ArtworkApp</Link>
-        </header>
+        <SiteHeader currentPath="/" />
         <section className="py-24 sm:py-32">
           <p className="text-sm font-medium uppercase tracking-[0.2em] text-stone-500">
             Discover original art
