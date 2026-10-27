@@ -1,6 +1,7 @@
 export function safeNextPath(next: unknown): string {
   if (typeof next !== 'string' || !next.startsWith('/') || next.startsWith('//')) return '/dashboard';
-  if (/[\\%\x00-\x1f\x7f]/.test(next)) return '/dashboard';
+  const path = next.split(/[?#]/, 1)[0];
+  if (/[\\\x00-\x1f\x7f]/.test(next) || path.includes('%')) return '/dashboard';
   try {
     const url = new URL(next, 'http://internal.invalid');
     if (url.origin !== 'http://internal.invalid') return '/dashboard';
