@@ -8,6 +8,8 @@ interface SessionContextValue {
   state: SessionState;
   user: UserProfile | null;
   refresh: () => Promise<boolean>;
+  signOut: () => Promise<boolean>;
+  signedOut: boolean;
 }
 
 const SessionContext = createContext<SessionContextValue | null>(null);
@@ -15,6 +17,7 @@ const SessionContext = createContext<SessionContextValue | null>(null);
 export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<SessionState>('loading');
   const [user, setUser] = useState<UserProfile | null>(null);
+  const [signedOut, setSignedOut] = useState(false);
   const requestId = useRef(0);
 
   const refresh = useCallback(async (): Promise<boolean> => {
@@ -43,6 +46,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       if (currentRequest !== requestId.current) return false;
       setUser(body.user);
       setState('authenticated');
+      setSignedOut(false);
       return true;
     } catch {
       if (currentRequest !== requestId.current) return false;
@@ -52,8 +56,24 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const signOut = useCallback(async (): Promise<boolean> => {
+    requestId.current++;
+    setUser(null);
+    setState('anonymous');
+    setSignedOut(true);
+    try {
+      const response = await fetch(authUrl('logout'), {
+        method: 'POST', credentials: 'include', cache: 'no-store',
+        headers: { 'Content-Type': 'application/json' }, body: '{}',
+      });
+      return response.ok || response.status === 401;
+    } catch {
+      return false;
+    }
+  }, []);
+
   useEffect(() => { void refresh(); }, [refresh]);
-  return <SessionContext.Provider value={{ state, user, refresh }}>{children}</SessionContext.Provider>;
+  return <SessionContext.Provider value={{ state, user, refresh, signOut, signedOut }}>{children}</SessionContext.Provider>;
 }
 
 export function useSession(): SessionContextValue {

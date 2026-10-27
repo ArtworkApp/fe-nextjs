@@ -62,6 +62,16 @@ describe('email authentication', () => {
     expect(push).toHaveBeenCalledWith('/dashboard/gallery?sort=new');
   });
 
+  it('returns to the original public page with its query after sign-in', async () => {
+    vi.mocked(fetch).mockResolvedValue({ ok: true } as Response);
+    const next = '/artworks?country=South%20Korea&sort=price_asc';
+    render(<AuthForm mode="login" next={next} />);
+    expect(screen.getByRole('link', { name: 'Create an account' })).toHaveAttribute('href', `/register?next=${encodeURIComponent(next)}`);
+    fill('login');
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+    await waitFor(() => expect(push).toHaveBeenCalledWith(next));
+  });
+
   it.each(['//evil.test', 'https://evil.test', '/%2f%2fevil.test', '/dashboard/%2e%2e/login'])('rejects unsafe next %s in links and navigation', async (next) => {
     vi.mocked(fetch).mockResolvedValue({ ok: true } as Response);
     render(<AuthForm mode="login" next={next} />);
