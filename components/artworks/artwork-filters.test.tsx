@@ -2,6 +2,14 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import Home from './ArtworkListingPage';
 
+vi.mock('../auth/SessionProvider', () => ({
+  useSession: () => ({ state: 'anonymous', user: null, signOut: async () => true }),
+}));
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ replace: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(window.location.search),
+}));
+
 const types = [{ id: '1', name: 'Painting', active: true }, { id: '2', name: 'Sculpture', active: true }];
 const materials = [
   { id: '10', name: 'Oil', artworkTypeId: '1', active: true, artworkType: types[0] },

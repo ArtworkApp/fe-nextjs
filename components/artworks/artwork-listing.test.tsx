@@ -2,6 +2,11 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import Home from "./ArtworkListingPage";
 
+vi.mock('../auth/SessionProvider', () => ({
+  useSession: () => ({ state: 'anonymous', user: null, signOut: async () => true }),
+}));
+vi.mock('next/navigation', () => ({ useRouter: () => ({ replace: vi.fn() }), useSearchParams: () => new URLSearchParams('sort=price_asc') }));
+
 const mockArtworkPayload = {
   data: [
     {
@@ -67,6 +72,14 @@ beforeEach(() => {
 });
 
 describe("Artwork listing page", () => {
+  it("offers sign-in and registration from the listing header", async () => {
+    render(<Home />);
+    await screen.findByText("Mona Lisa");
+    expect(screen.getByRole("navigation", { name: "Account" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Sign in" })).toHaveAttribute("href", "/login?next=%2Fartworks%3Fsort%3Dprice_asc");
+    expect(screen.getByRole("link", { name: "Create account" })).toHaveAttribute("href", "/register?next=%2Fartworks%3Fsort%3Dprice_asc");
+  });
+
   it("renders artworks with artists and price information", async () => {
     render(<Home />);
 

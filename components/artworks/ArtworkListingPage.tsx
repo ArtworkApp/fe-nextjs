@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ArtworkFilters } from "./ArtworkFilters";
 import { ArtworkCard, type ArtworkCardData } from "./ArtworkCard";
 import { apiBaseUrl } from "../../lib/apiBaseUrl";
+import { SiteHeader } from "../SiteHeader";
 import { DEFAULT_SORT, parseArtworkQuery, serializeArtworkQuery, writeArtworkQuery, type ArtworkQuery, type ArtworkFilters as FilterValues } from "../../lib/artworks/query";
 
 type ArtworkResponse = {
@@ -126,7 +127,8 @@ export default function ArtworkListingPage() {
   return (
     <main className="min-h-screen bg-stone-50 text-stone-900">
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <header className="mb-8 flex items-center justify-between gap-4">
+        <SiteHeader currentPath="/artworks" />
+        <div className="mb-8 mt-10 flex flex-wrap items-center justify-between gap-4">
           <div>
             <p className="text-sm font-medium uppercase tracking-[0.2em] text-stone-500">
               Artwork collection
@@ -134,22 +136,24 @@ export default function ArtworkListingPage() {
             <h1 className="mt-2 text-3xl font-semibold">Original artworks</h1>
           </div>
 
-          <label className="flex items-center gap-2 rounded-full border border-stone-200 bg-white px-3 py-2 text-sm shadow-sm">
-            <span className="sr-only">Sort artworks</span>
-            <span>Sort</span>
-            <select
-              aria-label="Sort artworks"
-              value={sort}
-              onChange={(event) => void handleSortChange(event.target.value)}
-              className="bg-transparent text-sm outline-none"
-            >
-              <option value="year_desc">Year: Newest First</option>
-              <option value="year_asc">Year: Oldest First</option>
-              <option value="price_asc">Price: Lowest First</option>
-              <option value="price_desc">Price: Highest First</option>
-            </select>
-          </label>
-        </header>
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="flex items-center gap-2 rounded-full border border-stone-200 bg-white px-3 py-2 text-sm shadow-sm">
+              <span className="sr-only">Sort artworks</span>
+              <span>Sort</span>
+              <select
+                aria-label="Sort artworks"
+                value={sort}
+                onChange={(event) => void handleSortChange(event.target.value)}
+                className="bg-transparent text-sm outline-none"
+              >
+                <option value="year_desc">Year: Newest First</option>
+                <option value="year_asc">Year: Oldest First</option>
+                <option value="price_asc">Price: Lowest First</option>
+                <option value="price_desc">Price: Highest First</option>
+              </select>
+            </label>
+          </div>
+        </div>
 
         <div className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
           <ArtworkFilters filters={query.filters} onApply={handleFiltersChange} />
