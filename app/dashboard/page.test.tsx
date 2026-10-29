@@ -1,67 +1,37 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import DashboardPage from './page';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { beforeEach, expect, it, vi } from 'vitest';
 
-const replace = vi.fn();
-const refresh = vi.fn();
-const mockUseSession = vi.fn();
+const redirect = vi.fn((path: string) => { throw new Error(`REDIRECT:${path}`); });
+const cookies = vi.fn(async () => ({ toString: (): string => 'artwork_access=valid' }));
+vi.mock('next/navigation', () => ({ redirect }));
+vi.mock('next/headers', () => ({ cookies }));
+vi.mock('../../components/SiteHeader', () => ({ SiteHeader: () => null }));
 
-vi.mock('../../components/auth/SessionProvider', () => ({
-  useSession: (...args: unknown[]) => mockUseSession(...args),
-}));
+beforeEach(() => {
+  vi.stubEnv('NEXT_PUBLIC_API_URL', 'http://localhost:3001/api/v1');
+  vi.stubGlobal('fetch', vi.fn());
+  redirect.mockClear();
+});
 
-vi.mock('next/navigation', () => ({
-  usePathname: () => '/dashboard',
-  useRouter: () => ({ replace }),
-}));
+it('renders private profile only after a direct server verification', async () => {
+  vi.mocked(fetch).mockResolvedValue(new Response(JSON.stringify({ user: { id: '1', email: 'person@example.com', displayName: null, avatarUrl: null } }), { status: 200 }));
+  const { default: DashboardPage } = await import('./page');
+  const html = renderToStaticMarkup(await DashboardPage());
+  expect(html).toContain('person@example.com');
+  expect(fetch).toHaveBeenCalledWith('http://localhost:3001/api/v1/auth/me', expect.objectContaining({ cache: 'no-store' }));
+});
 
-describe('dashboard route', () => {
-  beforeEach(() => {
-    replace.mockReset();
-    refresh.mockReset();
-    mockUseSession.mockReset();
-  });
+it('redirects an unauthorized direct request before rendering private data', async () => {
+  vi.mocked(fetch).mockResolvedValue(new Response('{}', { status: 401 }));
+  const { default: DashboardPage } = await import('./page');
+  await expect(DashboardPage()).rejects.toThrow('REDIRECT:/login?next=%2Fdashboard');
+});
 
-  it('redirects anonymous users who are not signed out', async () => {
-    mockUseSession.mockReturnValue({
-      state: 'anonymous',
-      user: null,
-      refresh,
-      signedOut: false,
-    });
-
-    render(<DashboardPage />);
-
-    expect(screen.getByRole('status')).toHaveTextContent('Redirecting to sign in…');
-    await waitFor(() => expect(replace).toHaveBeenCalledWith('/login?next=%2Fdashboard'));
-  });
-
-  it('shows a loading state while the session is being checked', () => {
-    mockUseSession.mockReturnValue({
-      state: 'loading',
-      user: null,
-      refresh,
-      signedOut: false,
-    });
-
-    render(<DashboardPage />);
-
-    expect(screen.getByRole('status')).toHaveTextContent('Checking your session…');
-    expect(replace).not.toHaveBeenCalled();
-  });
-
-  it('shows an error state with a retry action', async () => {
-    mockUseSession.mockReturnValue({
-      state: 'error',
-      user: null,
-      refresh,
-      signedOut: false,
-    });
-
-    render(<DashboardPage />);
-
-    expect(screen.getByRole('status')).toHaveTextContent('Unable to check your session.');
-    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
-    await waitFor(() => expect(refresh).toHaveBeenCalledTimes(1));
-  });
+it('shows retry state during a backend outage', async () => {
+  vi.mocked(fetch).mockRejectedValue(new Error('offline'));
+  const { default: DashboardPage } = await import('./page');
+  const html = renderToStaticMarkup(await DashboardPage());
+  expect(html).toContain('Unable to check your session');
+  expect(html).toContain('Retry');
+  expect(redirect).not.toHaveBeenCalled();
 });
