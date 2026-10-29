@@ -59,7 +59,7 @@ export default function ArtworkListingPage() {
         setLoadMoreError(false);
       }
       setError(null);
-      const response = await fetch(url, { cache: "no-store", signal: controller.signal });
+      const response = await fetch(url, { credentials: 'include', cache: "no-store", signal: controller.signal });
       if (!response.ok) throw new Error("Unable to load artworks.");
       const payload = (await response.json()) as ArtworkResponse;
       if (controller.signal.aborted) return;

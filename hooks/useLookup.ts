@@ -16,7 +16,7 @@ export function useLookup<T>(endpoint: string) {
     async function load() {
       try {
         const base = apiBaseUrl();
-        const response = await fetch(`${base}/${endpoint}`, { signal: controller.signal });
+        const response = await fetch(`${base}/${endpoint}`, { credentials: 'include', signal: controller.signal });
         if (!response.ok) throw new Error('Lookup failed');
         const payload = await response.json() as { data: T[] };
         if (!Array.isArray(payload.data)) throw new Error('Invalid lookup response');
