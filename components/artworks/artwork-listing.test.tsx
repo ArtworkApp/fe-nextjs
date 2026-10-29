@@ -84,6 +84,10 @@ describe("Artwork listing page", () => {
     render(<Home />);
 
     expect(await screen.findByText("Mona Lisa")).toBeInTheDocument();
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/artworks?'),
+      expect.objectContaining({ credentials: 'include' }),
+    );
     expect(screen.getByText("Leonardo da Vinci")).toBeInTheDocument();
     expect(screen.getByText("Vincent van Gogh, Paul Gauguin")).toBeInTheDocument();
     expect(screen.getByText("$120,000")).toBeInTheDocument();

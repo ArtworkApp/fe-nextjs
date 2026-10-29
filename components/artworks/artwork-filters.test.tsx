@@ -39,6 +39,8 @@ describe('artwork filters', () => {
     window.history.replaceState({}, '', '/?sort=price_asc&page=3');
     render(<Home />);
     await screen.findByRole('option', { name: 'Painting' });
+    expect(fetch).toHaveBeenCalledWith('http://localhost:3001/api/v1/artwork-types', expect.objectContaining({ credentials: 'include' }));
+    expect(fetch).toHaveBeenCalledWith('http://localhost:3001/api/v1/materials', expect.objectContaining({ credentials: 'include' }));
     fireEvent.change(screen.getByLabelText('Artwork type'), { target: { value: '1' } });
     fireEvent.click(screen.getByLabelText('Oil'));
     fireEvent.click(screen.getByLabelText('Canvas'));
@@ -190,6 +192,10 @@ describe('artwork filters', () => {
     render(<Home />);
     const artist = await screen.findByLabelText('Artist');
     fireEvent.change(artist, { target: { value: 'monet' } });
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/artists?search=monet'),
+      expect.objectContaining({ credentials: 'include' }),
+    ));
     expect(await screen.findByRole('option', { name: /Claude Monet/ })).toBeInTheDocument();
     fireEvent.keyDown(artist, { key: 'ArrowDown' });
     fireEvent.keyDown(artist, { key: 'Enter' });

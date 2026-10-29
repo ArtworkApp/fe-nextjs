@@ -10,6 +10,7 @@ interface SessionContextValue {
   refresh: () => Promise<boolean>;
   signOut: () => Promise<boolean>;
   signedOut: boolean;
+  signOutWarning: string;
 }
 
 const SessionContext = createContext<SessionContextValue | null>(null);
@@ -18,6 +19,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<SessionState>('loading');
   const [user, setUser] = useState<UserProfile | null>(null);
   const [signedOut, setSignedOut] = useState(false);
+  const [signOutWarning, setSignOutWarning] = useState('');
   const requestId = useRef(0);
 
   const refresh = useCallback(async (): Promise<boolean> => {
@@ -47,6 +49,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       setUser(body.user);
       setState('authenticated');
       setSignedOut(false);
+      setSignOutWarning('');
       return true;
     } catch {
       if (currentRequest !== requestId.current) return false;
@@ -61,19 +64,23 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
     setState('anonymous');
     setSignedOut(true);
+    setSignOutWarning('');
     try {
       const response = await fetch(authUrl('logout'), {
         method: 'POST', credentials: 'include', cache: 'no-store',
         headers: { 'Content-Type': 'application/json' }, body: '{}',
       });
-      return response.ok || response.status === 401;
+      const confirmed = response.ok || response.status === 401;
+      if (!confirmed) setSignOutWarning('Could not confirm sign-out with the server.');
+      return confirmed;
     } catch {
+      setSignOutWarning('Could not confirm sign-out with the server.');
       return false;
     }
   }, []);
 
   useEffect(() => { void refresh(); }, [refresh]);
-  return <SessionContext.Provider value={{ state, user, refresh, signOut, signedOut }}>{children}</SessionContext.Provider>;
+  return <SessionContext.Provider value={{ state, user, refresh, signOut, signedOut, signOutWarning }}>{children}</SessionContext.Provider>;
 }
 
 export function useSession(): SessionContextValue {

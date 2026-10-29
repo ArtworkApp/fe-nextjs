@@ -48,7 +48,7 @@ export function ArtistAutocomplete({ selectedId, selectedArtist, onSelect }: Pro
           const base = apiBaseUrl();
           if (!base) throw new Error('API URL is not configured');
           const params = new URLSearchParams({ search: term, limit: '21' });
-          const response = await fetch(`${base}/artists?${params}`, { signal: controller.signal });
+          const response = await fetch(`${base}/artists?${params}`, { credentials: 'include', signal: controller.signal });
           if (!response.ok) throw new Error('Artist search failed');
           const payload = await response.json() as ArtistResponse;
           if (!Array.isArray(payload.data)) throw new Error('Invalid artist search response');
