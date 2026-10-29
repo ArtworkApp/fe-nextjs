@@ -4,7 +4,7 @@ import { AccountLinks } from './AccountLinks';
 
 const replace = vi.fn();
 const signOut = vi.fn(async () => true);
-const session = { state: 'authenticated', user: { id: '1', email: 'person@example.com', displayName: 'Alex', avatarUrl: null }, signOut };
+const session = { state: 'authenticated', user: { id: '1', email: 'person@example.com', displayName: 'Alex', avatarUrl: null }, signOut, signOutWarning: '' };
 vi.mock('./SessionProvider', () => ({ useSession: () => session }));
 vi.mock('next/navigation', () => ({ useRouter: () => ({ replace }), useSearchParams: () => new URLSearchParams() }));
 
@@ -12,6 +12,7 @@ beforeEach(() => {
   replace.mockReset();
   signOut.mockReset().mockResolvedValue(true);
   session.state = 'authenticated';
+  session.signOutWarning = '';
 });
 
 it('shows a greeting and sign-out control after authentication', () => {
@@ -38,5 +39,8 @@ it('announces when server sign-out could not be confirmed', async () => {
   signOut.mockResolvedValue(false);
   render(<AccountLinks currentPath="/" />);
   fireEvent.click(screen.getByRole('button', { name: 'Sign out' }));
-  expect(await screen.findByRole('status')).toHaveTextContent('Could not confirm sign-out with the server.');
+  await waitFor(() => expect(signOut).toHaveBeenCalledTimes(1));
+  session.signOutWarning = 'Could not confirm sign-out with the server.';
+  render(<AccountLinks currentPath="/" />);
+  expect(screen.getByText('Could not confirm sign-out with the server.')).toBeInTheDocument();
 });

@@ -7,10 +7,9 @@ import { safeNextPath } from '../../lib/auth/nextPath';
 import { useSession } from './SessionProvider';
 
 export function AccountLinks({ currentPath }: { currentPath: string }) {
-  const { state, user, refresh, signOut } = useSession();
+  const { state, user, refresh, signOut, signOutWarning } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [error, setError] = useState('');
   const [isSigningOut, setIsSigningOut] = useState(false);
   const pending = useRef(false);
   const search = searchParams.toString();
@@ -20,9 +19,7 @@ export function AccountLinks({ currentPath }: { currentPath: string }) {
     if (pending.current) return;
     pending.current = true;
     setIsSigningOut(true);
-    setError('');
-    const confirmed = await signOut();
-    if (!confirmed) setError('Could not confirm sign-out with the server.');
+    await signOut();
     if (currentPath.startsWith('/dashboard')) router.replace('/');
     pending.current = false;
     setIsSigningOut(false);
@@ -40,7 +37,7 @@ export function AccountLinks({ currentPath }: { currentPath: string }) {
         <Link className="rounded-full bg-stone-900 px-4 py-2 font-medium text-white focus-visible:outline-2 focus-visible:outline-offset-2" href={`/register?next=${encodeURIComponent(next)}`}>Create account</Link>
         {state === 'error' && <button type="button" onClick={() => void refresh()} className="underline">Retry account check</button>}
       </>}
-      {error && <span role="status" aria-live="polite" className="w-full text-red-700">{error}</span>}
+      {signOutWarning && <span role="status" aria-live="polite" className="w-full text-red-700">{signOutWarning}</span>}
     </nav>
   );
 }
