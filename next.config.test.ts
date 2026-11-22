@@ -9,3 +9,9 @@ describe('reset password security headers', () => {
     ]));
   });
 });
+
+describe('Turbopack configuration', () => {
+  it('uses the frontend directory as the project root', () => {
+    expect(nextConfig.turbopack?.root).toBe(process.cwd());
+  });
+});
