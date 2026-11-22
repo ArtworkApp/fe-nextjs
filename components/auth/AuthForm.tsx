@@ -17,7 +17,7 @@ const formSchema = z.object({
 });
 type FormValues = z.infer<typeof formSchema>;
 
-export function AuthForm({ mode, next }: { mode: 'login' | 'register'; next?: string | string[] | null }) {
+export function AuthForm({ mode, next, isPasswordResetComplete = false }: { mode: 'login' | 'register'; next?: string | string[] | null; isPasswordResetComplete?: boolean }) {
   const router = useRouter();
   const { refresh } = useSession();
   const destination = safeNextPath(next);
@@ -93,6 +93,7 @@ export function AuthForm({ mode, next }: { mode: 'login' | 'register'; next?: st
         <section className="mt-12 rounded-2xl border border-stone-200 bg-white p-6 shadow-sm sm:p-8">
           <h1 className="text-3xl font-semibold">{mode === 'login' ? 'Sign in' : 'Create your account'}</h1>
           <p className="mt-2 text-stone-600">{mode === 'login' ? 'Welcome back.' : 'Join to discover original art.'}</p>
+          {mode === 'login' && isPasswordResetComplete && <p role="status" className="mt-4 text-sm text-stone-700">Password updated. Please sign in with your new password.</p>}
           <form className="mt-8 space-y-5" onSubmit={handleSubmit(submit)} noValidate>
             <div>
               <label className="block font-medium" htmlFor="email">Email</label>

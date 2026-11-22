@@ -22,6 +22,11 @@ beforeEach(() => {
 });
 
 describe('email authentication', () => {
+  it('asks the user to sign in after a successful password reset', () => {
+    render(<AuthForm mode="login" isPasswordResetComplete />);
+    expect(screen.getByRole('status')).toHaveTextContent('Password updated. Please sign in with your new password.');
+  });
+
   it('links to password recovery from sign-in', () => {
     render(<AuthForm mode="login" />);
     expect(screen.getByRole('link', { name: 'Forgot password?' })).toHaveAttribute('href', '/forgot-password');
