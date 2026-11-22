@@ -108,6 +108,7 @@ export function AuthForm({ mode, next }: { mode: 'login' | 'register'; next?: st
               <p id="password-hint" className="mt-1 text-sm text-stone-600">Use at least 12 characters.</p>
               {errors.password && <p id="password-error" className="mt-1 text-sm text-red-700">{errors.password.message}</p>}
             </div>
+            {mode === 'login' && <div className="text-right text-sm"><Link className="font-semibold underline" href="/forgot-password">Forgot password?</Link></div>}
             {mode === 'register' && <div>
               <label className="block font-medium" htmlFor="confirmPassword">Confirm password</label>
               <div className="mt-2 flex items-center gap-2">
